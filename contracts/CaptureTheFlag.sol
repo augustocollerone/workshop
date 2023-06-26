@@ -6,7 +6,6 @@ pragma solidity ^0.8.7;
 import "@opengsn/contracts/src/ERC2771Recipient.sol";
 
 contract CaptureTheFlag is ERC2771Recipient {
-
     event FlagCaptured(address previousHolder, address currentHolder);
 
     address public currentHolder = address(0);
@@ -15,7 +14,7 @@ contract CaptureTheFlag is ERC2771Recipient {
         _setTrustedForwarder(forwarder);
     }
 
-    string public override versionRecipient = "3.0.0";
+    string public versionRecipient = "3.0.0";
 
     function captureTheFlag() external {
         address previousHolder = currentHolder;
