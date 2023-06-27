@@ -5,6 +5,7 @@ const {
   bufferToHex,
   privateToAddress,
   PrefixedHexString,
+  toBuffer,
 } = require("ethereumjs-util");
 
 const paymasterAddress = require("../build/gsn/Paymaster").address;
@@ -18,6 +19,8 @@ const toketV3Abi = toketV3Artifact.abi;
 
 const paymasterArtifact = require("../build/contracts/WhitelistPaymaster.json");
 const veryPaymasterArtifact = require("../build/contracts/VerifyingPaymaster.json");
+const veryPaymasterAbi = veryPaymasterArtifact.abi;
+
 const relayHubArtifact = require("../build/contracts/RelayHub.json");
 const relayHubAbi = relayHubArtifact.abi;
 const { signRelayRequest } = require("@opengsn/paymasters");
@@ -43,7 +46,11 @@ const asyncApprovalData = async function (relayRequest) {
   console.log("*AC got TO STEP 1.3: ", relayRequest);
 
   try {
-    return signRelayRequest(relayRequest, signerBuffer);
+    const sig = signRelayRequest(relayRequest, signerBuffer);
+    console.log("*AC SIG LENGTH: ", toBuffer(sig).length);
+
+    console.log("*AC SIG: ", sig);
+    return sig;
   } catch (error) {
     console.log("*AC SIGNATURE FAILED");
     throw error;
@@ -114,26 +121,21 @@ async function initContract() {
   const veryPaymasterAddress =
     veryPaymasterArtifact.networks[networkId].address;
 
-  const selectedPaymaster = whitelistPaymasterAddress;
-
-  console.log("*AC whitelistPaymasterAddress: ", whitelistPaymasterAddress);
+  const selectedPaymaster = veryPaymasterAddress;
 
   const { gsnProvider, gsnSigner } = await RelayProvider.newEthersV5Provider({
     provider: window.ethereum,
     config: {
+      maxApprovalDataLength: 65,
       loggerConfiguration: { logLevel: "debug" },
       paymasterAddress: selectedPaymaster,
     },
-    // overrideDependencies: { asyncApprovalData },
+    overrideDependencies: { asyncApprovalData },
   });
 
   provider = gsnProvider;
-  console.log("*AC here2");
-
   const network = await provider.getNetwork();
-  console.log("*AC here3");
   const artifactNetwork = contractArtifact.networks[networkId];
-  console.log("*AC here4");
   if (!artifactNetwork)
     throw new Error("Can't find deployment on network " + networkId);
   const contractAddress = artifactNetwork.address;
@@ -148,8 +150,6 @@ async function initContract() {
     toketV3Abi,
     provider.getSigner()
   );
-
-  console.log("*AC toketV3Contract: ", toketV3Contract);
 
   const role = await toketV3Contract.MINTER_ROLE();
   console.log("*AC ROLE: ", role);
@@ -170,9 +170,20 @@ async function initContract() {
     provider.getSigner()
   );
 
-  console.log(`relayH:`, relayH);
   const paymasterBalance = await relayH.balanceOf(selectedPaymaster);
   console.log(`PAYMASTER BALANCE:`, paymasterBalance);
+
+  const veryContract = new ethers.Contract(
+    veryPaymasterAddress,
+    veryPaymasterAbi,
+    provider.getSigner()
+  );
+  console.log(`veryContract:`, veryContract);
+
+  const verySIGNER = await veryContract.functions["signer"]();
+  const provAddress = await provider.getSigner().getAddress();
+  console.log(`provider.getSigner():`, provAddress);
+  console.log(`verySIGNER:`, verySIGNER);
 
   await listenToEvents();
   return { contractAddress, network };
