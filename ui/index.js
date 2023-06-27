@@ -6,10 +6,11 @@ const paymasterAddress = require("../build/gsn/Paymaster").address;
 const contractArtifact = require("../build/contracts/CaptureTheFlag.json");
 const contractAbi = contractArtifact.abi;
 
+const paymasterArtifact = require("../build/contracts/WhitelistPaymaster.json");
+
 let theContract;
 let provider;
 let gsnProvider;
-
 
 // Create a new RelayProvider instance in the place where you normally initialize your Web3.js/Ethers.js provider:
 async function getProvider() {
@@ -56,6 +57,8 @@ async function initContract() {
   provider = new ethers.providers.Web3Provider(gsnProvider);
 
   const networkId = "1337";
+  const whitelistPaymasterAddress = paymasterArtifact.networks["1337"].address;
+
   const artifactNetwork = contractArtifact.networks[networkId];
   if (!artifactNetwork)
     throw new Error("Can't find deployment on network " + networkId);
