@@ -1,6 +1,7 @@
 const CaptureTheFlag = artifacts.require("CaptureTheFlag");
 
 const WhiteListPaymaster = artifacts.require("WhitelistPaymaster");
+const VerifyingPaymaster = artifacts.require("VerifyingPaymaster");
 const RelayHub = artifacts.require("RelayHub");
 
 // const RelayHubContract = require("./RelayHub.json");
@@ -26,6 +27,14 @@ module.exports = async function (deployer) {
   await relayHub.depositFor(pm.address, { value: 1e18 });
 
   await pm.setRelayHub(relayHubAddress);
+
+  await deployer.deploy(VerifyingPaymaster);
+  const pmVery = await VerifyingPaymaster.deployed();
+  await pmVery.setTrustedForwarder(forwarder);
+  await pmVery.setSigner("0xc07648fd3311b7b97171efb2db9da7625b234487");
+  await pmVery.setRelayHub(relayHubAddress);
+
+  await relayHub.depositFor(pmVery.address, { value: 1e18 });
 
   console.log(
     `Deployed CTF at ${CaptureTheFlag.address} with forwarder ${forwarder}`
