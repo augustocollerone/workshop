@@ -1,5 +1,6 @@
 const ethers = require("ethers");
 const { RelayProvider } = require("@opengsn/provider");
+const { TurnkeySigner } = require("@turnkey/ethers");
 
 const paymasterAddress = require("../build/gsn/Paymaster").address;
 const contractArtifact = require("../build/contracts/CaptureTheFlag.json");
@@ -9,54 +10,81 @@ let theContract;
 let provider;
 let gsnProvider;
 
-async function initContract() {
-  if (!window.ethereum) {
-    throw new Error("provider not found");
-  }
-  window.ethereum.on("accountsChanged", () => {
-    console.log("acct");
-    window.location.reload();
-  });
-  window.ethereum.on("chainChanged", () => {
-    console.log("chainChained");
-    window.location.reload();
-  });
-  const networkId = await window.ethereum.request({ method: "net_version" });
 
-  gsnProvider = await RelayProvider.newProvider({
-    provider: window.ethereum,
-    config: {
-      loggerConfiguration: { logLevel: "debug" },
-      paymasterAddress,
+// Create a new RelayProvider instance in the place where you normally initialize your Web3.js/Ethers.js provider:
+async function getProvider() {
+  const config = {
+    paymasterAddress,
+    loggerConfiguration: {
+      logLevel: "debug",
     },
-  }).init();
+  };
 
+  // Initialize a Turnkey Signer
+  const turnkeySigner = new TurnkeySigner({
+    apiPublicKey: TK_API_PUBLIC_KEY,
+    apiPrivateKey: TK_API_PRIVATE_KEY,
+    baseUrl: TK_BASE_URL,
+    organizationId: ORGANIZATION_ID,
+    privateKeyId,
+  });
+
+  const localRpc = "http://127.0.0.1:8545";
+  const provider = new ethers.providers.JsonRpcProvider(localRpc);
+  const connectedSigner = turnkeySigner.connect(provider);
+
+  //   const address = await connectedSigner.getAddress();
+
+  //   console.log("*DEV address: ", address);
+
+  // to create a pair of Ethers.js Provider and Signer:
+  const { gsnProvider, gsnSigner } = await RelayProvider.newEthersV5Provider({
+    provider: connectedSigner,
+    config,
+  });
+
+  console.log("*DEV gsnProvider: ", gsnProvider);
+  console.log("*DEV gsnSigner: ", gsnSigner);
+
+  return gsnProvider;
+}
+
+async function initContract() {
+  gsnProvider = await getProvider();
+
+  console.log("*DEV gsnProvider; ", gsnProvider);
   provider = new ethers.providers.Web3Provider(gsnProvider);
 
-  const network = await provider.getNetwork();
+  const networkId = "1337";
   const artifactNetwork = contractArtifact.networks[networkId];
   if (!artifactNetwork)
     throw new Error("Can't find deployment on network " + networkId);
   const contractAddress = artifactNetwork.address;
-  theContract = new ethers.Contract(
-    contractAddress,
-    contractAbi,
-    provider.getSigner()
-  );
+  theContract = new ethers.Contract(contractAddress, contractAbi, provider);
 
-  await listenToEvents();
-  return { contractAddress, network };
+  const transaction = await theContract.captureTheFlag();
+  console.log("*DEV transaction: ", transaction);
+
+  //   await listenToEvents();
+  return { contractAddress, network: {} };
 }
 
 async function contractCall() {
-  await window.ethereum.send("eth_requestAccounts");
+  //   await window.ethereum.send("eth_requestAccounts");
 
-  const txOptions = { gasPrice: await provider.getGasPrice() };
-  const transaction = await theContract.captureTheFlag(txOptions);
-  const hash = transaction.hash;
-  console.log(`Transaction ${hash} sent`);
-  const receipt = await transaction.wait();
-  console.log(`Mined in block: ${receipt.blockNumber}`);
+  //   try {
+  //     //   const txOptions = { gasPrice: await provider.getGasPrice() };
+  //     //   console.log("*AC txOptions: ", txOptions);
+  console.log("*AC PRE transaction: ");
+  const transaction = await theContract.captureTheFlag();
+  console.log("*AC transaction: ", transaction);
+  //     const hash = transaction.hash;
+  //     console.log(`Transaction ${hash} sent`);
+  //     const receipt = await transaction.wait();
+  //     console.log(`Mined in block: ${receipt.blockNumber}`);
+  //   } catch (error) {
+  //     console.log("*AC error: ", error);
+  //   }
 }
 
 let logview;

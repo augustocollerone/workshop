@@ -1,4 +1,5 @@
 <html>
+
 <head>
 
     <title>GSNv3 Test</title>
@@ -7,22 +8,25 @@
     </script>
 
 </head>
+
 <body>
-<h2>GSNv3 Test App</h2>
+    <h2>GSNv3 Test App</h2>
 
-<script>
-    window.app.initContract().then(function ({contractAddress, network}) {
-        console.log('CaptureTheFlag contract', contractAddress)
-        console.log(`identified network: ${JSON.stringify(network)}`)
-        document.getElementById('capture_button').disabled = false
-    })
-</script>
+    <script>
+        window.app.initContract().then(function ({ contractAddress, network }) {
+            console.log('CaptureTheFlag contract', contractAddress)
+            console.log(`identified network: ${JSON.stringify(network)}`)
+            document.getElementById('capture_button').disabled = false
+            console.log(`DONE HERE`)
+        })
+    </script>
 
-<button id="capture_button" disabled onClick="window.app.contractCall()">
-    Capture the flag
-</button>
+    <button id="capture_button" disabled onClick="window.app.contractCall()">
+        Capture the flag
+    </button>
 
-<hr>
-<div id="logview"></div>
+    <hr>
+    <div id="logview"></div>
 </body>
+
 </html>
