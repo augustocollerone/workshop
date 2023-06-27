@@ -13,6 +13,9 @@ const relayHubAddress = require("../build/gsn/RelayHub.json").address;
 const contractArtifact = require("../build/contracts/CaptureTheFlag.json");
 const contractAbi = contractArtifact.abi;
 
+const toketV3Artifact = require("../build/contracts/ToketV3.json");
+const toketV3Abi = toketV3Artifact.abi;
+
 const paymasterArtifact = require("../build/contracts/WhitelistPaymaster.json");
 const veryPaymasterArtifact = require("../build/contracts/VerifyingPaymaster.json");
 const relayHubArtifact = require("../build/contracts/RelayHub.json");
@@ -20,6 +23,7 @@ const relayHubAbi = relayHubArtifact.abi;
 const { signRelayRequest } = require("@opengsn/paymasters");
 
 let theContract;
+let toketV3Contract;
 let provider;
 let gsnProvider;
 
@@ -110,7 +114,7 @@ async function initContract() {
   const veryPaymasterAddress =
     veryPaymasterArtifact.networks[networkId].address;
 
-  const selectedPaymaster = veryPaymasterAddress;
+  const selectedPaymaster = whitelistPaymasterAddress;
 
   console.log("*AC whitelistPaymasterAddress: ", whitelistPaymasterAddress);
 
@@ -120,7 +124,7 @@ async function initContract() {
       loggerConfiguration: { logLevel: "debug" },
       paymasterAddress: selectedPaymaster,
     },
-    overrideDependencies: { asyncApprovalData },
+    // overrideDependencies: { asyncApprovalData },
   });
 
   provider = gsnProvider;
@@ -138,6 +142,27 @@ async function initContract() {
     contractAbi,
     provider.getSigner()
   );
+
+  toketV3Contract = new ethers.Contract(
+    toketV3Artifact.networks[networkId].address,
+    toketV3Abi,
+    provider.getSigner()
+  );
+
+  console.log("*AC toketV3Contract: ", toketV3Contract);
+
+  const role = await toketV3Contract.MINTER_ROLE();
+  console.log("*AC ROLE: ", role);
+  const hasRole = await toketV3Contract.hasRole(
+    role,
+    "0xc07648fd3311b7b97171efb2db9da7625b234487"
+  );
+  console.log("*AC hasRole: ", hasRole);
+  const hasRole2 = await toketV3Contract.hasRole(
+    role,
+    "0x1dF62f291b2E969fB0849d99D9Ce41e2F137006e"
+  );
+  console.log("*AC hasRole2: ", hasRole2);
 
   const relayH = new ethers.Contract(
     relayHubAddress,
@@ -157,10 +182,16 @@ async function contractCall() {
   await window.ethereum.send("eth_requestAccounts");
 
   const txOptions = { gasPrice: await provider.getGasPrice() };
-  const transaction = await theContract.captureTheFlag(txOptions);
+  const transaction = await toketV3Contract.safeMint(
+    "0xc07648fd3311b7b97171efb2db9da7625b234487",
+    "URI",
+    txOptions
+  );
+  //   const transaction = await theContract.captureTheFlag(txOptions);
   const hash = transaction.hash;
   console.log(`Transaction ${hash} sent`);
   const receipt = await transaction.wait();
+  console.log(`Receipt: ${JSON.stringify(receipt)}`);
   console.log(`Mined in block: ${receipt.blockNumber}`);
 }
 
