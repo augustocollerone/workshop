@@ -20,7 +20,8 @@
     "test": "truffle test",
     "compile": "truffle compile",
     "build": "./ui/build.sh",
-    "start": "truffle deploy && yarn build && yarn serve ./build/html"
+    "start": "truffle deploy && yarn build && yarn serve ./build/html",
+    "reset2": "rm -rf build/contracts && yarn compile && cp RelayHub.json build/contracts/RelayHub.json"
   },
   "author": "Dror Tirosh",
   "license": "GPL"
