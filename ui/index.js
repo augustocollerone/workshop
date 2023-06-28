@@ -1,12 +1,5 @@
 const ethers = require("ethers");
 const { RelayProvider } = require("@opengsn/provider");
-const { randomBytes } = require("crypto");
-const {
-  bufferToHex,
-  privateToAddress,
-  PrefixedHexString,
-  toBuffer,
-} = require("ethereumjs-util");
 
 const paymasterAddress = require("../build/gsn/Paymaster").address;
 const relayHubAddress = require("../build/gsn/RelayHub.json").address;
@@ -19,7 +12,7 @@ const toketV3Abi = toketV3Artifact.abi;
 
 const paymasterArtifact = require("../build/contracts/WhitelistPaymaster.json");
 const veryPaymasterArtifact = require("../build/contracts/VerifyingPaymaster.json");
-const veryPaymasterAbi = veryPaymasterArtifact.abi;
+// const veryPaymasterAbi = veryPaymasterArtifact.abi;
 
 const relayHubArtifact = require("../build/contracts/RelayHub.json");
 const relayHubAbi = relayHubArtifact.abi;
@@ -28,79 +21,38 @@ const { signRelayRequest } = require("@opengsn/paymasters");
 let theContract;
 let toketV3Contract;
 let provider;
-let gsnProvider;
 
 const asyncApprovalData = async function (relayRequest) {
-  const privkey = randomBytes(32);
-  console.log("*AC privkey: ", privkey);
-  console.log("*AC SIGNER: ", bufferToHex(privateToAddress(privkey)));
+  const signerPk =
+    "d433933b6e578c621129d400cbe27caca4d3c70cfec4729739ea8c363bd79761";
 
   // Create buffer from pk string
   const signerBuffer = Buffer.from(signerPk, "hex");
-  console.log(
-    "*AC POSTA SIGNER: ",
-    bufferToHex(privateToAddress(signerBuffer))
-  );
-  console.log("*AC signerBuffer: ", signerBuffer);
-
-  console.log("*AC got TO STEP 1.3: ", relayRequest);
-
   try {
     const sig = signRelayRequest(relayRequest, signerBuffer);
-    console.log("*AC SIG LENGTH: ", toBuffer(sig).length);
-
-    console.log("*AC SIG: ", sig);
     return sig;
   } catch (error) {
     console.log("*AC SIGNATURE FAILED");
     throw error;
   }
-
-  //   console.log("*AC im here in the async approval");
-  //   const signer = provider.getSigner();
-  //   console.log("*AC got the signer: ", [
-  //     relayRequest.request.from,
-  //     relayRequest.request.to,
-  //     relayRequest.request.value,
-  //     relayRequest.request.gas,
-  //     relayRequest.request.nonce,
-  //     relayRequest.request.data,
-  //     relayRequest.relayData.relayWorker,
-  //     relayRequest.relayData.paymaster,
-  //   ]);
-  //   // Get the request hash
-  //   const requestHash = ethers.utils.solidityKeccak256(
-  //     [
-  //       "address",
-  //       "address",
-  //       "uint256",
-  //       "uint256",
-  //       "uint256",
-  //       "bytes",
-  //       "address",
-  //       "address",
-  //     ],
-  //     [
-  //       relayRequest.request.from,
-  //       relayRequest.request.to,
-  //       relayRequest.request.value,
-  //       relayRequest.request.gas,
-  //       relayRequest.request.nonce,
-  //       relayRequest.request.data,
-  //       relayRequest.relayData.relayWorker,
-  //       relayRequest.relayData.paymaster,
-  //     ]
-  //     // Add other fields as needed
-  //   );
-
-  //   // Sign the request hash
-  //   const signature = await signer.signMessage(
-  //     ethers.utils.arrayify(requestHash)
-  //   );
-
-  //   return signature;
-  //   return Promise.resolve("0x1234567890");
 };
+
+// Create a new RelayProvider instance in the place where you normally initialize your Web3.js/Ethers.js provider:
+async function getProvider(selectedPaymaster) {
+  const config = {
+    maxApprovalDataLength: 65,
+    loggerConfiguration: { logLevel: "debug" },
+    paymasterAddress: selectedPaymaster,
+  };
+
+  const { gsnProvider, gsnSigner } = await RelayProvider.newEthersV5Provider({
+    provider: window.ethereum,
+    config: config,
+    overrideDependencies: { asyncApprovalData },
+  });
+
+  return gsnProvider;
+}
 
 async function initContract() {
   if (!window.ethereum) {
@@ -123,17 +75,7 @@ async function initContract() {
 
   const selectedPaymaster = veryPaymasterAddress;
 
-  const { gsnProvider, gsnSigner } = await RelayProvider.newEthersV5Provider({
-    provider: window.ethereum,
-    config: {
-      maxApprovalDataLength: 65,
-      loggerConfiguration: { logLevel: "debug" },
-      paymasterAddress: selectedPaymaster,
-    },
-    overrideDependencies: { asyncApprovalData },
-  });
-
-  provider = gsnProvider;
+  provider = await getProvider(selectedPaymaster);
   const network = await provider.getNetwork();
   const artifactNetwork = contractArtifact.networks[networkId];
   if (!artifactNetwork)
@@ -151,18 +93,18 @@ async function initContract() {
     provider.getSigner()
   );
 
-  const role = await toketV3Contract.MINTER_ROLE();
-  console.log("*AC ROLE: ", role);
-  const hasRole = await toketV3Contract.hasRole(
-    role,
-    "0xc07648fd3311b7b97171efb2db9da7625b234487"
-  );
-  console.log("*AC hasRole: ", hasRole);
-  const hasRole2 = await toketV3Contract.hasRole(
-    role,
-    "0x1dF62f291b2E969fB0849d99D9Ce41e2F137006e"
-  );
-  console.log("*AC hasRole2: ", hasRole2);
+  //   const role = await toketV3Contract.MINTER_ROLE();
+  //   console.log("*AC ROLE: ", role);
+  //   const hasRole = await toketV3Contract.hasRole(
+  //     role,
+  //     "0xc07648fd3311b7b97171efb2db9da7625b234487"
+  //   );
+  //   console.log("*AC hasRole: ", hasRole);
+  //   const hasRole2 = await toketV3Contract.hasRole(
+  //     role,
+  //     "0x1dF62f291b2E969fB0849d99D9Ce41e2F137006e"
+  //   );
+  //   console.log("*AC hasRole2: ", hasRole2);
 
   const relayH = new ethers.Contract(
     relayHubAddress,
@@ -173,17 +115,17 @@ async function initContract() {
   const paymasterBalance = await relayH.balanceOf(selectedPaymaster);
   console.log(`PAYMASTER BALANCE:`, paymasterBalance);
 
-  const veryContract = new ethers.Contract(
-    veryPaymasterAddress,
-    veryPaymasterAbi,
-    provider.getSigner()
-  );
-  console.log(`veryContract:`, veryContract);
-
-  const verySIGNER = await veryContract.functions["signer"]();
-  const provAddress = await provider.getSigner().getAddress();
-  console.log(`provider.getSigner():`, provAddress);
-  console.log(`verySIGNER:`, verySIGNER);
+  //   const veryContract = new ethers.Contract(
+  //     veryPaymasterAddress,
+  //     veryPaymasterAbi,
+  //     provider.getSigner()
+  //   );
+  //   console.log(`veryContract:`, veryContract);
+  //
+  //   const verySIGNER = await veryContract.functions["signer"]();
+  //   const provAddress = await provider.getSigner().getAddress();
+  //   console.log(`provider.getSigner():`, provAddress);
+  //   console.log(`verySIGNER:`, verySIGNER);
 
   await listenToEvents();
   return { contractAddress, network };
@@ -193,12 +135,12 @@ async function contractCall() {
   await window.ethereum.send("eth_requestAccounts");
 
   const txOptions = { gasPrice: await provider.getGasPrice() };
-  const transaction = await toketV3Contract.safeMint(
-    "0xc07648fd3311b7b97171efb2db9da7625b234487",
-    "URI",
-    txOptions
-  );
-  //   const transaction = await theContract.captureTheFlag(txOptions);
+  //   const transaction = await toketV3Contract.safeMint(
+  //     "0xc07648fd3311b7b97171efb2db9da7625b234487",
+  //     "URI",
+  //     txOptions
+  //   );
+  const transaction = await theContract.captureTheFlag(txOptions);
   const hash = transaction.hash;
   console.log(`Transaction ${hash} sent`);
   const receipt = await transaction.wait();
